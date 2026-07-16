@@ -12,8 +12,8 @@ license = { file = "LICENSE" }
 readme = "README.md"
 keywords = ["ACCESS-RAM", "Regional Nesting Suite", "era5grib"]
 dynamic = ["version"]
+requires-python = ">=3.10,<3.13"
 dependencies = [
-    "python >=3.10,<=3.12",
     "cdo",
     "numpy <2",
     "pandas",
