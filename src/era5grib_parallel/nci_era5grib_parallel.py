@@ -24,7 +24,7 @@ import pandas
 
 from era5grib_parallel import cdo_era5grib
 
-def create_grib(START,outdir):
+def create_grib(START,outdir,region=None):
 
     """
     Function that creates one single GRIB file per date-time from the ERA5 archive
@@ -35,6 +35,9 @@ def create_grib(START,outdir):
             The requested date to be repackaged in %Y-%m-%dT%H:%M:%S format 
     outdir : Path
             The path for the output file to be written to
+    region : tuple of float, optional
+            (lon1, lon2, lat1, lat2) bounding box to subset with CDO before
+            conversion. Default is None (no subsetting).
 
     Returns
     -------
@@ -43,9 +46,38 @@ def create_grib(START,outdir):
     """
 
     # Create the grib file from the netcdf archive
-    cdo_era5grib.repackage_grib(START, outdir)
+    cdo_era5grib.repackage_grib(START, outdir, region=region)
 
     return os.getpid()
+
+
+def parse_region(value):
+    """
+    Parse a '--region' command-line argument of the form 'lon1,lon2,lat1,lat2'
+    into a tuple of four floats for cdo's sellonlatbox.
+
+    Parameters
+    ----------
+    value : string
+            Comma-separated 'lon1,lon2,lat1,lat2'
+
+    Returns
+    -------
+    tuple of float
+        (lon1, lon2, lat1, lat2)
+    """
+
+    parts = [p.strip() for p in value.split(",")]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError(
+            "--region expects four comma-separated values: lon1,lon2,lat1,lat2"
+        )
+    try:
+        return tuple(float(p) for p in parts)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "--region values must be numeric: lon1,lon2,lat1,lat2"
+        )
 
 
 def main():
@@ -69,6 +101,13 @@ def main():
     parser.add_argument('--start', required=True, type=pandas.to_datetime)
     parser.add_argument('--count', default=1, type=int)
     parser.add_argument('--freq', default=60*60, type=lambda x: int(x))
+    parser.add_argument('--region', default=None, type=parse_region,
+                         help="Optional lon1,lon2,lat1,lat2 bounding box to subset "
+                              "with CDO's sellonlatbox before conversion. "
+                              "Default: no subsetting (global domain).")
+    parser.add_argument('--tasks', default=4, type=int,
+                         help="Number of worker processes to run in parallel. "
+                              "Default: 4.")
     args = parser.parse_args() 
 
     # Create a list of the requested date/times
@@ -81,22 +120,22 @@ def main():
         all_dates.append(cd_string) 
     print(all_dates)
 
-    # Farm out the date/times to 4 worker processes at time until done.
-    with Pool(processes=4) as pool: 
+    # Farm out the date/times to args.tasks worker processes at a time until done.
+    with Pool(processes=args.tasks) as pool: 
 
-        # Select four dates to work on, then create the GRIB files in parallel
-        for offset in range(0, len(all_dates)+1, 4): 
+        # Select args.tasks dates to work on, then create the GRIB files in parallel
+        for offset in range(0, len(all_dates)+1, args.tasks): 
 
             subset_dates = []
 
-            for i in range(offset, offset + 4):
+            for i in range(offset, offset + args.tasks):
                 try:
                     subset_dates.append(all_dates[i])
                 except:
                     pass
 
             # launching multiple evaluations asynchronously *may* use more processes
-            multiple_results = [pool.apply_async(create_grib, (dt,args.output,)) for dt in subset_dates]
+            multiple_results = [pool.apply_async(create_grib, (dt,args.output,args.region,)) for dt in subset_dates]
             for res in multiple_results:
                 try:
                     res.get(timeout=600)

@@ -50,7 +50,7 @@ def fields():
         "z, single, 129"]
     return lines
 
-def repackage_grib(dt_string,outdir):
+def repackage_grib(dt_string,outdir,region=None):
     """
     For a single date/time, this function reads through the ERA5 netcdf archive
     to produce a GRIB file for UM driving model reconfiguration.
@@ -62,6 +62,10 @@ def repackage_grib(dt_string,outdir):
     outdir : Path
             The path for the output file to be written to
             requested date to be repackaged in %Y-%m-%dT%H:%M:%S format 
+    region : tuple of float, optional
+            (lon1, lon2, lat1, lat2) bounding box to subset with CDO's
+            sellonlatbox before conversion. Default is None, which keeps
+            the full (unsubset) global domain.
 
     Returns
     -------
@@ -70,6 +74,15 @@ def repackage_grib(dt_string,outdir):
 
     r = "%10.10f"%random()
     r = r.replace("0.", "")
+
+    # Build the optional region-subsetting CDO operator. Left empty when no
+    # region is requested so the generated commands are byte-identical to
+    # the previous behaviour.
+    if region is not None:
+        lon1, lon2, lat1, lat2 = region
+        region_op = "-sellonlatbox,%s,%s,%s,%s " % (lon1, lon2, lat1, lat2)
+    else:
+        region_op = ""
     
     dt = datetime.strptime(dt_string, "%Y-%m-%dT%H:%M:%S")
     compact_dt_string = datetime.strftime(dt, "%Y%m%d%H%M.t+000")
@@ -90,9 +103,10 @@ def repackage_grib(dt_string,outdir):
         yyyymm = "%4.4d%2.2d"%(dt.year, dt.month)
         fname = [f for f in files if yyyymm in f][0]
 
-        # Select out the specific date/time from the netcdf archive file
+        # Select out the specific date/time (and optionally the region) from
+        # the netcdf archive file
         outfname = var + "_" + compact_dt_string + "_" + r + ".nc"
-        cmd = "cdo -L --eccodes seldate," + dt_string + " " + filedir + "/" + fname + " " + outfname
+        cmd = "cdo -L --eccodes seldate," + dt_string + " " + region_op + filedir + "/" + fname + " " + outfname
         os.system(cmd)
 
         # Change the name of the variable if sea-ice
