@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/era5grib_parallel/__init__.py
+src/era5grib_parallel/_version.py
+src/era5grib_parallel/cdo_era5grib.py
+src/era5grib_parallel/nci_era5grib_parallel.py
+src/era5grib_parallel.egg-info/PKG-INFO
+src/era5grib_parallel.egg-info/SOURCES.txt
+src/era5grib_parallel.egg-info/dependency_links.txt
+src/era5grib_parallel.egg-info/entry_points.txt
+src/era5grib_parallel.egg-info/requires.txt
+src/era5grib_parallel.egg-info/top_level.txt

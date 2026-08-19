@@ -1,0 +1,4 @@
+cdo
+numpy<2
+pandas
+versioneer

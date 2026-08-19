@@ -1,0 +1,2 @@
+[console_scripts]
+era5grib_parallel = era5grib_parallel.nci_era5grib_parallel:main
