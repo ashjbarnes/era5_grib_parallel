@@ -164,7 +164,7 @@ def longitude_slicer(data, longitude_extent, longitude_coords):
     return data
 
 def replacement_era5grib(starttime, endtime,outdir,region=None,tasks = 52):
-    client = Client(n_workers = tasks)
+    client = Client(n_workers = tasks,threads_per_worker = 1)
 
     ## Constants
     era5_vars = {
@@ -294,7 +294,7 @@ def replacement_era5grib(starttime, endtime,outdir,region=None,tasks = 52):
     ## Save all of the individual raw netcdf files before grib conversion. 
     time_strings = []
     write_nc_tasks = []
-    for i in range(len(alldata.time)):
+    for i in range(len(alldata.time)): 
         write_nc_tasks.append(
             dask.delayed(write_single_file)(alldata.isel(time = [i]),outdir)
         )
